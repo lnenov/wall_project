@@ -1,5 +1,6 @@
 from django.apps import AppConfig
 
+
 class ConstructionApiConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'construction_api'
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "construction_api"
