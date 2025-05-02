@@ -1,11 +1,11 @@
+import logging
 from pathlib import Path
-import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = "django-insecure-temp-key-replace-me-later-if-needed!"
-DEBUG = True
+DEBUG = False
 ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
@@ -79,6 +79,7 @@ USE_TZ = True
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+LOGGING_LEVEL = logging.DEBUG if DEBUG else logging.INFO
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -101,12 +102,12 @@ LOGGING = {
     "loggers": {
         "django": {
             "handlers": ["console", "file"],
-            "level": "INFO",
+            "level": logging.getLevelName(LOGGING_LEVEL),
             "propagate": False,
         },
         "construction_api": {  # Your app's logger
             "handlers": ["file"],
-            "level": "DEBUG",
+            "level": logging.getLevelName(LOGGING_LEVEL),
             "propagate": False,
         },
     },

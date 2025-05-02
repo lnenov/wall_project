@@ -40,9 +40,7 @@ class ModelTests(TestCase):
 
     def test_wall_section_unique_together(self):
         profile = WallProfile.objects.create(original_index=1)
-        WallSection.objects.create(
-            profile=profile, section_index=0, initial_height=10
-        )
+        WallSection.objects.create(profile=profile, section_index=0, initial_height=10)
         with self.assertRaises(Exception):
             WallSection.objects.create(
                 profile=profile, section_index=0, initial_height=15
@@ -106,9 +104,7 @@ class RunSimulationCommandTests(
 
     def test_command_clears_previous_data(self):
         p = WallProfile.objects.create(original_index=99)
-        WallSection.objects.create(
-            profile=p, section_index=0, initial_height=10
-        )
+        WallSection.objects.create(profile=p, section_index=0, initial_height=10)
         DailyRecord.objects.create(
             profile=p, day=1, cost_today=100, cumulative_cost=100
         )

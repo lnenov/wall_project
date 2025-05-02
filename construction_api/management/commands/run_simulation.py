@@ -1,11 +1,8 @@
 import logging
-import os
 import time
-from collections import defaultdict
 
 from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction, models
-from django.db.models import F  # For atomic updates
+from django.db import transaction
 from django.utils import timezone
 
 from construction_api.models import (
@@ -14,7 +11,11 @@ from construction_api.models import (
     DailyRecord,
     SimulationMetadata,
 )
-from construction_api.simulation import TARGET_HEIGHT, simulate_full_workforce, simulate_partial_workforce
+from construction_api.simulation import (
+    TARGET_HEIGHT,
+    simulate_full_workforce,
+    simulate_partial_workforce,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +28,14 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "config_file", type=str,
-            help="Path to the input config file."
+            "config_file", type=str, help="Path to the input config file."
         )
         parser.add_argument(
-            "--number_of_teams", type=int, default=None, required=False,
-            help="Number of constrution teams"
+            "--number_of_teams",
+            type=int,
+            default=None,
+            required=False,
+            help="Number of constrution teams",
         )
 
     @transaction.atomic
@@ -141,18 +144,15 @@ class Command(BaseCommand):
 
             simulation_end_time = timezone.now()
             final_day = max(
-                [
-                    daily_record_data['day']
-                    for daily_record_data in daily_records_data
-                ],
-                default=0
+                [daily_record_data["day"] for daily_record_data in daily_records_data],
+                default=0,
             )
             final_cost = max(
                 [
-                    daily_record_data['cumulative_cost']
+                    daily_record_data["cumulative_cost"]
                     for daily_record_data in daily_records_data
                 ],
-                default=0
+                default=0,
             )
 
             # Save metadata
