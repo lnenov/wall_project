@@ -1,19 +1,14 @@
-# construction_api/views.py
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from django.http import Http404
-from django.db.models import Max
 import logging
+
+from django.db.models import Max
+from django.http import Http404
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import WallProfile, DailyRecord, SimulationMetadata
 
 logger = logging.getLogger(__name__)
-
-
-def check_results_exist():
-    """Helper to check if any simulation results are present in the database."""
-    return DailyRecord.objects.exists()
 
 
 class DailyIceView(APIView):
@@ -24,16 +19,6 @@ class DailyIceView(APIView):
 
     def get(self, request, profile_id, day_number, format=None):
         logger.debug(f"API DailyIceView: profile={profile_id}, day={day_number}")
-        if not check_results_exist():
-            logger.warning(
-                "DailyIceView accessed but no simulation results found in DB."
-            )
-            return Response(
-                {
-                    "error": "Simulation results not yet available. Run 'run_simulation'."
-                },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
 
         try:
             p_original_index = int(profile_id)
@@ -94,16 +79,6 @@ class CostOverviewView(APIView):
 
     def get(self, request, profile_id=None, day_number=None, format=None):
         logger.debug(f"API CostOverviewView: profile={profile_id}, day={day_number}")
-        if not check_results_exist():
-            logger.warning(
-                "CostOverviewView accessed but no simulation results found in DB."
-            )
-            return Response(
-                {
-                    "error": "Simulation results not yet available. Run 'run_simulation'."
-                },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
 
         p_original_index = None
         day = None
@@ -112,14 +87,16 @@ class CostOverviewView(APIView):
         if profile_id is not None:
             try:
                 p_original_index = int(profile_id)
-                profile_instance = WallProfile.objects.get(
-                    original_index=p_original_index
-                )
             except ValueError:
                 logger.warning(f"Invalid integer format for profile_id: {profile_id}")
                 return Response(
                     {"error": "Profile ID (original index) must be an integer."},
                     status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            try:
+                profile_instance = WallProfile.objects.get(
+                    original_index=p_original_index
                 )
             except WallProfile.DoesNotExist:
                 logger.warning(
@@ -130,17 +107,18 @@ class CostOverviewView(APIView):
         if day_number is not None:
             try:
                 day = int(day_number)
-                if day <= 0:
-                    return Response(
-                        {"error": "Day number must be positive."},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
             except ValueError:
                 logger.warning(f"Invalid integer format for day_number: {day_number}")
                 return Response(
                     {"error": "Day Number must be an integer."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+            else:
+                if day <= 0:
+                    return Response(
+                        {"error": "Day number must be positive."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
         cost = 0
         response_day = day

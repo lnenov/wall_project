@@ -1,0 +1,163 @@
+import itertools
+import logging
+import logging
+import time
+from collections import defaultdict
+from multiprocessing import Process, Manager, current_process, Event, Semaphore
+
+import pandas as pd
+
+from construction_api.models import WallSection
+
+logger = logging.getLogger(__name__)
+
+# Constants
+COST_PER_YARD = 1900
+YARDS_PER_FOOT = 195
+COST_PER_FOOT = YARDS_PER_FOOT * COST_PER_YARD
+TARGET_HEIGHT = 30
+
+
+def simulate_full_workforce():
+    work_done = []
+    sections = WallSection.objects.all()
+    for section in sections:
+        for day in range(1, 31 - section.initial_height):
+            work_done.append({
+                "day": day,
+                "profile_id": section.profile_id,
+                "sections_worked": 1,
+            })
+
+    return daily_records_data_from_work_done(work_done)
+
+
+def partial_workforce_worker(team_id, shared_data, day_event, day_semaphore):
+    """Worker simulates one team doing exactly one section per day."""
+    personal_queue = []
+    work_done = []
+    current_day = 0
+
+    while True:
+        # Wait for new day signal
+        day_event.wait()
+        current_day += 1
+        
+        # If no job, pull one from global pool
+        if not personal_queue:
+            try:
+                # Get exclusive access to shared data
+                with day_semaphore:
+                    job = shared_data['pending_jobs'].pop(0)
+                    personal_queue.append(job)
+            except IndexError:
+                # No job left in pool
+                logging.info(f"Team-{team_id}: relieved")
+                # Get exclusive access to shared data
+                with day_semaphore:
+                    shared_data['work_done'].append(work_done)
+                break
+
+        if personal_queue:
+            profile_id, section_id, current_height = personal_queue.pop(0)
+            key = (profile_id, section_id)
+
+            if current_height < TARGET_HEIGHT:
+                current_height += 1
+                work_done.append({
+                    "day": current_day,
+                    "profile_id": profile_id,
+                    "sections_worked": 1,
+                }) 
+
+                if current_height == TARGET_HEIGHT:
+                    logging.info(f"Team-{team_id}: completed profile {profile_id}, section {section_id} on day {current_day}")
+                else:
+                    # Still not done, add back to own queue
+                    logging.info(f"Team-{team_id}: got profile {profile_id}, section {section_id} to {current_height} on day {current_day}")
+                    personal_queue.append((profile_id, section_id, current_height))
+        
+        # Reset event for next day
+        day_event.clear()
+
+
+def simulate_partial_workforce(team_count):
+    manager = Manager()
+    shared_data = manager.dict()
+    shared_data['pending_jobs'] = manager.list()
+    shared_data['work_done'] = manager.list()
+
+    # Flatten jobs with initial heights
+    sections = WallSection.objects.all()
+    for section in sections:
+        shared_data['pending_jobs'].append((section.profile_id, section.id, section.initial_height))
+
+    # Create synchronization primitives
+    day_event = Event()
+    day_semaphore = Semaphore(1)  # Only one worker accesses shared data at a time
+
+    # Start workers
+    processes = []
+    for tid in range(team_count):
+        p = Process(target=partial_workforce_worker, args=(tid, shared_data, day_event, day_semaphore))
+        p.start()
+        processes.append(p)
+
+    # Advance the simulation until all jobs are done
+    # TODO: Remove debug variable
+    current_day = 1
+    active_workers = team_count
+
+    while active_workers > 0:
+        print(f'Starting day {current_day}')
+        
+        # Signal workers to start new day
+        day_event.set()
+        
+        # TODO: Seems to work without this sleep, but it gives me a feeling
+        #       some teams have bigger chance to miss a day without it
+        #   Replace this with a list of locks
+        # Wait for all workers to complete the day
+        time.sleep(0.1)  # Minimal sleep just to yield CPU
+        
+        # Check if workers are still active
+        active_workers = sum(1 for p in processes if p.is_alive())
+        current_day += 1
+
+    for p in processes:
+        p.join()
+
+    return daily_records_data_from_work_done(itertools.chain(*shared_data['work_done']))
+
+
+def daily_records_data_from_work_done(work_done):
+    work_done_df = pd.DataFrame(work_done)
+    work_done_df["sections_worked"] = 1
+
+    daily_records_data = []
+    if not work_done_df.empty:
+        work_done_df = work_done_df.groupby(["day", "profile_id"]).count().reset_index()
+        for profile_id in work_done_df.profile_id.unique():
+            sub = work_done_df[work_done_df.profile_id == profile_id]
+            for day in sorted(sub.day.unique()):
+                ice_yards_today = sub[sub.day == day].sections_worked.sum() * YARDS_PER_FOOT
+                daily_records_data.append({
+                    "cumulative_cost": sub[sub.day <= day].sections_worked.sum() * COST_PER_FOOT,
+                    "ice_yards_today": ice_yards_today,
+                    "cost_today": ice_yards_today * COST_PER_YARD,
+                    "profile_id": profile_id,
+                    "day": day,
+                    "is_overall": False,
+                })
+        for day in work_done_df.day.unique():
+            ice_yards_today = work_done_df[work_done_df.day == day].sections_worked.sum() * YARDS_PER_FOOT
+            daily_records_data.append({
+                "cumulative_cost": work_done_df[work_done_df.day <= day].sections_worked.sum() * COST_PER_FOOT,
+                "ice_yards_today": ice_yards_today,
+                "cost_today": ice_yards_today * COST_PER_YARD,
+                "profile_id": None,
+                "day": day,
+                "is_overall": True,
+            })
+
+    return daily_records_data

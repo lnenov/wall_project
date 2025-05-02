@@ -4,7 +4,7 @@ import os
 import tempfile
 from io import StringIO
 
-from django.core.management import call_command, CommandError
+from django.core.management import call_command
 from django.urls import reverse
 from django.test import TestCase, TransactionTestCase
 from rest_framework import status
@@ -175,16 +175,14 @@ class RunSimulationCommandTests(
         self.assertEqual(dr_overall.cumulative_cost, 2 * COST_PER_FOOT)
 
     def test_command_invalid_config_file_path(self):
-        with self.assertRaises(CommandError) as cm:
-            self.call_simulation_command("non_existent_file.txt")
-        self.assertIn("Configuration file not found", str(cm.exception))
+        stdout, stderr = self.call_simulation_command("non_existent_file.txt")
+        self.assertIn("Configuration file not found", stderr)
 
     def test_command_invalid_config_file_content_height(self):
         self.temp_config_file.write("10 40\n")
         self.temp_config_file.flush()
-        with self.assertRaises(CommandError) as cm:
-            self.call_simulation_command()
-        self.assertIn("Invalid height", str(cm.exception))
+        stdout, stderr = self.call_simulation_command()
+        self.assertIn("Invalid height", stderr)
 
 
 # === API View Tests (Mostly unchanged, just ensure setUpTestData matches expectations) ===
