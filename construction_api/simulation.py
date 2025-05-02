@@ -6,9 +6,11 @@ from multiprocessing import (
     Manager,
     Event,
     Semaphore,
+    Queue,
 )
 
 import pandas as pd
+from django.conf import settings
 
 from construction_api.models import WallSection
 
@@ -19,6 +21,14 @@ COST_PER_YARD = 1900
 YARDS_PER_FOOT = 195
 COST_PER_FOOT = YARDS_PER_FOOT * COST_PER_YARD
 TARGET_HEIGHT = 30
+
+
+def log_listener(log_queue):
+    while True:
+        record = log_queue.get()
+        if record is None:
+            break
+        logger.handle(record)
 
 
 def simulate_full_workforce():
@@ -38,6 +48,12 @@ def simulate_full_workforce():
 
 
 def simulate_partial_workforce(team_count):
+    log_queue = Queue()
+
+    # Start logging listener in main process
+    listener_process = Process(target=log_listener, args=(log_queue,))
+    listener_process.start()
+
     manager = Manager()
     shared_data = manager.dict()
     shared_data["pending_jobs"] = manager.list()
@@ -59,7 +75,7 @@ def simulate_partial_workforce(team_count):
     for tid in range(team_count):
         p = Process(
             target=partial_workforce_worker,
-            args=(tid, shared_data, day_event, day_semaphore),
+            args=(tid, shared_data, day_event, day_semaphore, log_queue),
         )
         p.start()
         processes.append(p)
@@ -80,11 +96,18 @@ def simulate_partial_workforce(team_count):
     for p in processes:
         p.join()
 
+    # Tell listener to shut down
+    log_queue.put(None)
+    listener_process.join()
+
     return daily_records_data_from_work_done(itertools.chain(*shared_data["work_done"]))
 
 
-def partial_workforce_worker(team_id, shared_data, day_event, day_semaphore):
+def partial_workforce_worker(team_id, shared_data, day_event, day_semaphore, log_queue):
     """Worker simulates one team doing exactly one section per day."""
+    logger = logging.getLogger(f"worker-team-{team_id}")
+    logger.setLevel(settings.LOGGING_LEVEL)
+    logger.addHandler(logging.handlers.QueueHandler(log_queue))
     personal_queue = []
     work_done = []
     current_day = 0
