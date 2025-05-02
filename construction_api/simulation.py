@@ -52,14 +52,13 @@ def simulate_partial_workforce(team_count):
 
     # Create synchronization primitives
     day_event = Event()
-    day_semaphore = Semaphore(1)  # Only one worker accesses shared data at a time
 
     # Start workers
     processes = []
     for tid in range(team_count):
         p = Process(
             target=partial_workforce_worker,
-            args=(tid, shared_data, day_event, day_semaphore),
+            args=(tid, shared_data, day_event),
         )
         p.start()
         processes.append(p)
@@ -83,7 +82,7 @@ def simulate_partial_workforce(team_count):
     return daily_records_data_from_work_done(itertools.chain(*shared_data["work_done"]))
 
 
-def partial_workforce_worker(team_id, shared_data, day_event, day_semaphore):
+def partial_workforce_worker(team_id, shared_data, day_event):
     """Worker simulates one team doing exactly one section per day."""
     personal_queue = []
     work_done = []
@@ -98,15 +97,13 @@ def partial_workforce_worker(team_id, shared_data, day_event, day_semaphore):
         if not personal_queue:
             try:
                 # Get exclusive access to shared data
-                with day_semaphore:
-                    job = shared_data["pending_jobs"].pop(0)
-                    personal_queue.append(job)
+                job = shared_data["pending_jobs"].pop(0)
+                personal_queue.append(job)
             except IndexError:
                 # No job left in pool
                 logger.info(f"Team-{team_id}: relieved")
                 # Get exclusive access to shared data
-                with day_semaphore:
-                    shared_data["work_done"].append(work_done)
+                shared_data["work_done"].append(work_done)
                 break
 
         if personal_queue:
