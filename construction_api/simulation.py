@@ -33,7 +33,7 @@ def simulate_full_workforce():
     work_done = []
     sections = WallSection.objects.all()
     for section in sections:
-        for day in range(1, 31 - section.initial_height):
+        for day in range(1, TARGET_HEIGHT + 1 - section.initial_height):
             work_done.append({
                 "day": day,
                 "profile_id": section.profile_id,

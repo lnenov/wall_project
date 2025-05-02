@@ -7,7 +7,6 @@ class WallProfile(models.Model):
     original_index = models.PositiveIntegerField(
         unique=True, help_text="1-based index from the input file"
     )
-    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Profile {self.original_index}"
@@ -23,21 +22,13 @@ class WallSection(models.Model):
         help_text="0-based index within the profile"
     )
     initial_height = models.IntegerField()
-    current_height = models.IntegerField()
-    is_complete = models.BooleanField(default=False, db_index=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ("profile", "section_index")
         ordering = ["profile__original_index", "section_index"]
 
     def __str__(self):
-        target_height = 30
-        status = (
-            "Complete" if self.is_complete else f"{self.current_height}/{target_height}"
-        )
-        return f"Profile {self.profile.original_index} Section {self.section_index} ({status})"
+        return f"Profile {self.profile.original_index} Section {self.section_index} (Initial height {self.initial_height})"
 
 
 class DailyRecord(models.Model):
@@ -56,8 +47,6 @@ class DailyRecord(models.Model):
     ice_yards_today = models.PositiveIntegerField(default=0)
     cost_today = models.BigIntegerField(default=0)
     cumulative_cost = models.BigIntegerField(default=0)
-
-    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ("day", "profile", "is_overall")

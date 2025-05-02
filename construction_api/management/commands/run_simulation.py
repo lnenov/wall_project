@@ -82,8 +82,6 @@ class Command(BaseCommand):
                                 profile=profile_instance,
                                 section_index=section_idx,
                                 initial_height=height,
-                                current_height=height,
-                                is_complete=(height >= TARGET_HEIGHT),
                             )
                         )
 
