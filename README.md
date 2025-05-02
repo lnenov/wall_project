@@ -9,7 +9,7 @@ It stores wall profiles, section states, and daily results in a database (SQLite
 *   Reads wall profiles from a configuration file.
 *   **Persists** wall profiles, section states, and daily results to the database.
 *   Clears previous simulation data before loading new data via the management command.
-*   Simulates day-by-day construction using **single-threaded logic**:
+*   Simulates day-by-day construction using **single-threaded logic** or **multi-process logic**:
     *   All incomplete sections (< 30 ft) increase height by 1 foot each day.
     *   Calculates daily ice usage (195 cubic yards/foot).
     *   Calculates cumulative construction cost (1900 Gold Dragons/cubic yard).
@@ -43,13 +43,14 @@ It stores wall profiles, section states, and daily results in a database (SQLite
 
 5.  **Run Django migrations (Essential for DB setup):**
     ```bash
-    python manage.py makemigrations construction_api
     python manage.py migrate
     ```
 
 ## Running the Simulation
 
 Before using the API, you **must** run the simulation using the management command. This clears old data, loads the `input.txt` data into the database, calculates all the daily results sequentially, and stores them back in the database.
+
+# Single threaded logic
 
 ```bash
 python manage.py run_simulation <path_to_input_file>
@@ -62,9 +63,21 @@ python manage.py run_simulation input.txt
 ```
 
 *   Replace `input.txt` with the actual path to your configuration file.
-*   The `--teams` argument is **not** used in this version.
+*   The `--number_of_teams` argument is **not** used in this version.
 
-The command will print simulation progress and results to the console.
+# Multi process logic
+
+```bash
+python manage.py run_simulation <path_to_input_file> --number_of_teams <n_teams>
+```
+
+**Example:**
+
+```bash
+python manage.py run_simulation input.txt --number_of_teams 4
+```
+
+*   Replace `input.txt` with the actual path to your configuration file.
 
 ## Running the Development Server
 
