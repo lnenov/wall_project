@@ -28,29 +28,22 @@ class ModelTests(TestCase):
 
     def test_create_wall_section(self):
         profile = WallProfile.objects.create(original_index=5)
-        section = WallSection.objects.create(
-            profile=profile, section_index=0, initial_height=20, current_height=20
+        WallSection.objects.create(
+            profile=profile, section_index=0, initial_height=20
         )
-        self.assertFalse(section.is_complete)
-        self.assertIn("20/30", str(section))
         section_complete = WallSection.objects.create(
             profile=profile,
             section_index=1,
             initial_height=30,
-            current_height=30,
-            is_complete=True,
         )
-        self.assertTrue(section_complete.is_complete)
-        self.assertIn("Complete", str(section_complete))
+        self.assertIn("Initial height 30", str(section_complete))
 
     def test_wall_section_unique_together(self):
         profile = WallProfile.objects.create(original_index=1)
-        WallSection.objects.create(
-            profile=profile, section_index=0, initial_height=10, current_height=10
-        )
+        WallSection.objects.create(profile=profile, section_index=0, initial_height=10)
         with self.assertRaises(Exception):
             WallSection.objects.create(
-                profile=profile, section_index=0, initial_height=15, current_height=15
+                profile=profile, section_index=0, initial_height=15
             )
 
     def test_create_daily_record(self):
@@ -111,9 +104,7 @@ class RunSimulationCommandTests(
 
     def test_command_clears_previous_data(self):
         p = WallProfile.objects.create(original_index=99)
-        WallSection.objects.create(
-            profile=p, section_index=0, initial_height=10, current_height=10
-        )
+        WallSection.objects.create(profile=p, section_index=0, initial_height=10)
         DailyRecord.objects.create(
             profile=p, day=1, cost_today=100, cumulative_cost=100
         )
@@ -147,7 +138,6 @@ class RunSimulationCommandTests(
         s2_1 = WallSection.objects.get(profile=p2, section_index=0)
         self.assertEqual(s1_1.initial_height, 10)
         self.assertEqual(s2_1.initial_height, 30)
-        self.assertTrue(s2_1.is_complete)
 
     def test_command_simulation_produces_results(self):
         # Test that running the simulation creates DailyRecord and Metadata
@@ -196,13 +186,13 @@ class APIViewTests(APITestCase):
         cls.p1 = WallProfile.objects.create(original_index=1)
         cls.p2 = WallProfile.objects.create(original_index=2)
         cls.s1_1 = WallSection.objects.create(
-            profile=cls.p1, section_index=0, initial_height=28, current_height=28
+            profile=cls.p1, section_index=0, initial_height=28
         )
         cls.s1_2 = WallSection.objects.create(
-            profile=cls.p1, section_index=1, initial_height=29, current_height=29
+            profile=cls.p1, section_index=1, initial_height=29
         )
         cls.s2_1 = WallSection.objects.create(
-            profile=cls.p2, section_index=0, initial_height=29, current_height=29
+            profile=cls.p2, section_index=0, initial_height=29
         )
 
         # Expected Daily Records (Simulated Manually)
