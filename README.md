@@ -117,3 +117,12 @@ The API will be available at `http://127.0.0.1:8000/api/`.
 *   Day numbers (`day_number`) are 1-based.
 *   All numeric values in JSON responses are integers.
 *   Data persistence relies on the database (SQLite default).
+
+## Next steps
+
+* Ask a bot for help with tests for multi process simulation
+
+* Ask a bot to try to reduce the "if-elsy" feeling in the views. Fail and do it myself?
+
+* Update multi process to make sure the original process waits for each team to do their daily work.
+  Attempts so far ended up in almost predictable deadlocks :(
