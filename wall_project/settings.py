@@ -99,13 +99,13 @@ LOGGING = {
         },
     },
     "loggers": {
-        "django": {
-            "handlers": ["console", "file"],
-            "level": "INFO",
-            "propagate": False,
-        },
+        # "django": {
+        #     "handlers": ["console", "file"],
+        #     "level": "INFO",
+        #     "propagate": False,
+        # },
         "construction_api": {  # Your app's logger
-            "handlers": ["console", "file"],
+            "handlers": ["file"],
             "level": "DEBUG",
             "propagate": False,
         },
