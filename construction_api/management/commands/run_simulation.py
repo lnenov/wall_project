@@ -1,13 +1,12 @@
-# construction_api/management/commands/run_simulation.py
+import logging
+import os
+import time
+from collections import defaultdict
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction, models
 from django.db.models import F  # For atomic updates
 from django.utils import timezone
-from collections import defaultdict
-import logging
-import os
-import time
 
 from construction_api.models import (
     WallProfile,
@@ -32,10 +31,10 @@ class Command(BaseCommand):
         "and stores results in the database."
     )
 
-    # Removed --teams argument
     def add_arguments(self, parser):
         parser.add_argument(
-            "config_file", type=str, help="Path to the input config file."
+            "config_file", type=str,
+            help="Path to the input config file."
         )
 
     @transaction.atomic
@@ -82,7 +81,7 @@ class Command(BaseCommand):
                     for section_idx, height in enumerate(heights):
                         sections_to_create.append(
                             WallSection(
-                                _profile_original_index=profile_instance.original_index,
+                                profile=profile_instance,
                                 section_index=section_idx,
                                 initial_height=height,
                                 current_height=height,
@@ -91,7 +90,7 @@ class Command(BaseCommand):
                         )
 
             if not profiles_to_create:
-                raise ValueError("Config file is empty or contains no valid profiles.")
+                self.stdout.write("Config file is empty or contains no valid profiles.")
 
             created_profiles = WallProfile.objects.bulk_create(profiles_to_create)
             self.stdout.write(f"Created {len(created_profiles)} WallProfile records.")
@@ -99,13 +98,13 @@ class Command(BaseCommand):
             profile_map = {p.original_index: p.pk for p in created_profiles}
 
             for section in sections_to_create:
-                profile_pk = profile_map.get(section._profile_original_index)
+                profile_pk = profile_map.get(section.profile.original_index)
                 if profile_pk:
                     section.profile_id = profile_pk
-                    del section._profile_original_index
+                    del section.profile.original_index
                 else:
                     raise RuntimeError(
-                        f"Could not map profile PK for profile index {section._profile_original_index}"
+                        f"Could not map profile PK for profile index {section.profile.original_index}"
                     )
 
             WallSection.objects.bulk_create(sections_to_create)
