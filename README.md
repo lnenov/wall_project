@@ -22,7 +22,7 @@ It stores wall profiles, section states, and daily results in a database (SQLite
 
 2.  **Create and activate a virtual environment:**
     ```bash
-    python -m venv venv
+    python3.10 -m venv venv
     # On Windows:
     # venv\Scripts\activate
     # On macOS/Linux:
