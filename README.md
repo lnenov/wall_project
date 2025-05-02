@@ -46,6 +46,11 @@ It stores wall profiles, section states, and daily results in a database (SQLite
     python manage.py migrate
     ```
 
+6.  **Run Django development web server:**
+    ```bash
+    python manage.py runserver
+    ```
+
 ## Running the Simulation
 
 Before using the API, you **must** run the simulation using the management command. This clears old data, loads the `input.txt` data into the database, calculates all the daily results sequentially, and stores them back in the database.
