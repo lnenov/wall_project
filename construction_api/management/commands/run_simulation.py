@@ -14,6 +14,7 @@ from construction_api.models import (
 from construction_api.simulation import (
     TARGET_HEIGHT,
     simulate_full_workforce,
+    simulate_partial_workforce,
 )
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,13 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             "config_file", type=str, help="Path to the input config file."
+        )
+        parser.add_argument(
+            "--number_of_teams",
+            type=int,
+            default=None,
+            required=False,
+            help="Number of constrution teams",
         )
 
     @transaction.atomic
@@ -112,6 +120,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         config_file = options["config_file"]
+        number_of_teams = options["number_of_teams"]
 
         # --- Clear and Load Data ---
         try:
@@ -124,8 +133,12 @@ class Command(BaseCommand):
         start_time = time.time()
 
         try:
-            # Main Simulation Loop (Single-Threaded)
-            daily_records_data = simulate_full_workforce()
+            if number_of_teams is None:
+                # Main Simulation Loop (Single-Threaded)
+                daily_records_data = simulate_full_workforce()
+            else:
+                # Main Simulation Loop (Multi-Process)
+                daily_records_data = simulate_partial_workforce(number_of_teams)
             daily_records_to_create = [DailyRecord(**r) for r in daily_records_data]
             DailyRecord.objects.bulk_create(daily_records_to_create)
 
