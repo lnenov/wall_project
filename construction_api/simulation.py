@@ -32,7 +32,7 @@ def simulate_full_workforce():
     return daily_records_data_from_work_done(work_done)
 
 
-def partial_workforce_worker(team_id, shared_data, day_event, day_semaphore, team_worked_event):
+def partial_workforce_worker(team_id, shared_data, day_event, day_semaphore):
     """Worker simulates one team doing exactly one section per day."""
     personal_queue = []
     work_done = []
@@ -79,8 +79,6 @@ def partial_workforce_worker(team_id, shared_data, day_event, day_semaphore, tea
         
         # Reset event for next day
         day_event.clear()
-        # Signal master the team is done for the day
-        team_worked_event.set()
 
 
 def simulate_partial_workforce(team_count):
@@ -100,30 +98,20 @@ def simulate_partial_workforce(team_count):
 
     # Start workers
     processes = []
-    team_worked_events = {}
     for tid in range(team_count):
-        team_worked_event = Event()
-        p = Process(target=partial_workforce_worker, args=(tid, shared_data, day_event, day_semaphore, team_worked_event))
-        team_worked_events[p] = team_worked_event
+        p = Process(target=partial_workforce_worker, args=(tid, shared_data, day_event, day_semaphore))
         p.start()
         processes.append(p)
 
     # Advance the simulation until all jobs are done
     # TODO: Remove debug variable
-    # set  - set to True -> waiting guys start
-    # clear- set to False -> waiting guys are stuck
-    # wait - block if False
-    # Master does True -> worker is waiting and starts -> worker clears it
     current_day = 1
     active_workers = team_count
 
-    while active_workers:
+    while active_workers > 0:
         print(f'Starting day {current_day}')
         
-        for team_worked_event in team_worked_events.values():
-            team_worked_event.clear()
         # Signal workers to start new day
-        time.sleep(0.1)
         day_event.set()
         
         # TODO: Seems to work without this sleep, but it gives me a feeling
@@ -133,18 +121,7 @@ def simulate_partial_workforce(team_count):
         time.sleep(0.1)  # Minimal sleep just to yield CPU
         
         # Check if workers are still active
-        # active_workers = sum(1 for p in processes if p.is_alive())
-        active_workers = {
-            process: team_worked_event
-            for process, team_worked_event in team_worked_events.items()
-            if process.is_alive()
-        }
-        print(len(active_workers))
-        # Wait for active workes to finish work for the day
-        for team_worked_event in team_worked_events.values():
-            print('Waiting for a team')
-            team_worked_event.wait()
-            print('Waited for a team')
+        active_workers = sum(1 for p in processes if p.is_alive())
         current_day += 1
 
     for p in processes:
